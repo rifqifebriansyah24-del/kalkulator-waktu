@@ -347,10 +347,32 @@
     .entry-top { padding-right: 44px; }
     .delete-btn { position: absolute; top: 16px; right: 16px; }
     .date-row { flex-direction: column; align-items: stretch; gap: 8px; }
-    .date-input { flex: none; width: 100%; }
+    .date-input { flex: none; width: 100%; font-size: 0.95rem; padding: 9px 10px; }
     .status-badge { align-self: flex-start; }
     .live-clock-card { width: 100%; }
-    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    #live-clock { font-size: 1.15rem; }
+    .label-input { font-size: 1.15rem; }
+    .headline-stat { font-size: 1.3rem; display: block; }
+    .headline-suffix { display: block; margin-left: 0; margin-top: 2px; font-size: 0.8rem; }
+
+    .stat-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .stat-tile {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-radius: 0;
+      padding: 10px 12px;
+    }
+    .stat-tile .stat-label { font-size: 0.72rem; }
+    .stat-tile .stat-value { font-size: 1.05rem; font-weight: 600; white-space: nowrap; }
   }
 </style>
 
