@@ -1,0 +1,623 @@
+<title>Kalkulator Waktu</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #F3F5F7;
+    --surface: #FFFFFF;
+    --surface-alt: #EBEFF2;
+    --border: #DBE1E6;
+    --text: #1B232B;
+    --text-muted: #63707B;
+    --accent: #2B6E76;
+    --accent-strong: #1F535A;
+    --accent-contrast: #FFFFFF;
+    --accent-soft: #DCEBEC;
+    --status-past: #3D7A4F;
+    --status-past-bg: #E4F1E7;
+    --status-future: #B5651D;
+    --status-future-bg: #F7E8D8;
+    --danger: #A6423B;
+    --danger-soft: #F5E1DF;
+    --shadow: 0 1px 2px rgba(20, 30, 35, 0.06), 0 6px 16px rgba(20, 30, 35, 0.05);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11161A;
+      --surface: #1A2126;
+      --surface-alt: #212A30;
+      --border: #2E3941;
+      --text: #E8EDF0;
+      --text-muted: #93A2AB;
+      --accent: #5FBAB2;
+      --accent-strong: #7FCCC5;
+      --accent-contrast: #0B1416;
+      --accent-soft: #223A39;
+      --status-past: #79CB8E;
+      --status-past-bg: #1E332426;
+      --status-future: #E3A961;
+      --status-future-bg: #3A2C1826;
+      --danger: #E38A83;
+      --danger-soft: #3A211f26;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #11161A;
+    --surface: #1A2126;
+    --surface-alt: #212A30;
+    --border: #2E3941;
+    --text: #E8EDF0;
+    --text-muted: #93A2AB;
+    --accent: #5FBAB2;
+    --accent-strong: #7FCCC5;
+    --accent-contrast: #0B1416;
+    --accent-soft: #223A39;
+    --status-past: #79CB8E;
+    --status-past-bg: #1E332426;
+    --status-future: #E3A961;
+    --status-future-bg: #3A2C1826;
+    --danger: #E38A83;
+    --danger-soft: #3A211f26;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    padding-inline: 20px;
+    padding-block: 32px 64px;
+  }
+
+  .wrap {
+    max-width: 860px;
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(1.7rem, 1.4rem + 1.2vw, 2.35rem);
+    line-height: 1.1;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    max-width: 60ch;
+    margin: 0;
+  }
+
+  .live-clock-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: var(--shadow);
+    width: fit-content;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .live-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--status-past);
+    flex-shrink: 0;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot { animation: none; }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(61, 122, 79, 0.35); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 5px rgba(61, 122, 79, 0); }
+  }
+
+  .live-clock-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  #live-clock {
+    font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.05rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .entry-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .entry-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px 20px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .entry-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .entry-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1 1 260px;
+    min-width: 0;
+  }
+
+  .label-input {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+    border: none;
+    background: transparent;
+    padding: 2px 0;
+    border-bottom: 1px solid transparent;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .label-input:hover { border-bottom-color: var(--border); }
+  .label-input:focus {
+    outline: none;
+    border-bottom-color: var(--accent);
+  }
+
+  .date-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .date-input {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.85rem;
+    color: var(--text);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 9px;
+    color-scheme: light dark;
+    flex: 1 1 190px;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .date-input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .status-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-badge.past { color: var(--status-past); background: var(--status-past-bg); }
+  .status-badge.future { color: var(--status-future); background: var(--status-future-bg); }
+
+  .delete-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .delete-btn:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+
+  .delete-btn:focus-visible, .add-btn:focus-visible, .label-input:focus-visible, .date-input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .headline-stat {
+    font-family: "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(1.05rem, 0.95rem + 0.6vw, 1.3rem);
+    font-weight: 600;
+    color: var(--accent-strong);
+  }
+
+  .headline-suffix {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-left: 4px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+    gap: 8px;
+  }
+
+  .stat-tile {
+    background: var(--surface-alt);
+    border-radius: 9px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .stat-tile .stat-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .stat-tile .stat-value {
+    font-family: "IBM Plex Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--text);
+    overflow-wrap: break-word;
+  }
+
+  .add-btn {
+    border: 1.5px dashed var(--accent);
+    background: transparent;
+    color: var(--accent-strong);
+    border-radius: 12px;
+    padding: 14px;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+
+  .add-btn:hover {
+    background: var(--accent-soft);
+  }
+
+  footer.note {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-align: center;
+  }
+
+  @media (max-width: 480px) {
+    body { padding-inline: 16px; }
+    .entry-card { padding: 16px; position: relative; }
+    .entry-top { padding-right: 44px; }
+    .delete-btn { position: absolute; top: 16px; right: 16px; }
+    .date-row { flex-direction: column; align-items: stretch; gap: 8px; }
+    .date-input { flex: none; width: 100%; }
+    .status-badge { align-self: flex-start; }
+    .live-clock-card { width: 100%; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Kalkulator Waktu</h1>
+    <p class="subtitle">Hitung umur, durasi sejak suatu tanggal, atau hitung mundur ke tanggal yang akan datang — semuanya diperbarui langsung tiap detik.</p>
+    <div class="live-clock-card">
+      <span class="live-dot" aria-hidden="true"></span>
+      <div>
+        <div class="live-clock-label">Waktu sekarang</div>
+        <div id="live-clock">—</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="entry-list" id="entry-list"></div>
+
+  <button class="add-btn" id="add-btn" type="button">+ Tambah Peristiwa</button>
+
+  <footer class="note" id="storage-note">Menyambungkan penyimpanan otomatis…</footer>
+</div>
+
+<script>
+(function () {
+  var STORAGE_KEY = "kalkulator-waktu-entries-v1";
+  var listEl = document.getElementById("entry-list");
+  var clockEl = document.getElementById("live-clock");
+  var noteEl = document.getElementById("storage-note");
+  var entries = [];
+  var dbDoc = null;
+  var dbSaveTimer = null;
+
+  function two(n) { return String(n).padStart(2, "0"); }
+
+  function toLocalInputValue(d) {
+    return d.getFullYear() + "-" + two(d.getMonth() + 1) + "-" + two(d.getDate()) +
+      "T" + two(d.getHours()) + ":" + two(d.getMinutes());
+  }
+
+  function uid() {
+    return "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function loadEntries() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch (e) {}
+    var now = new Date();
+    var past = new Date(now.getFullYear() - 6, now.getMonth(), now.getDate() - 4, 9, 0);
+    var future = new Date(now.getFullYear() + 1, 0, 1, 0, 0);
+    return [
+      { id: uid(), label: "Contoh: Mulai Belajar Coding", date: toLocalInputValue(past) },
+      { id: uid(), label: "Contoh: Countdown Tahun Baru", date: toLocalInputValue(future) }
+    ];
+  }
+
+  function saveLocal() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); } catch (e) {}
+  }
+
+  function persist() {
+    saveLocal();
+    if (!dbDoc) return;
+    clearTimeout(dbSaveTimer);
+    dbSaveTimer = setTimeout(function () {
+      dbDoc.set({ entries: entries, updatedAt: new Date().toISOString() }).catch(function () {});
+    }, 500);
+  }
+
+  function initDb() {
+    if (!(window.claude && typeof window.claude.use === "function")) {
+      if (noteEl) noteEl.textContent = "Perubahan tersimpan otomatis di peramban ini saja (localStorage).";
+      return;
+    }
+    window.claude.use("db").then(function (db) {
+      if (!db) {
+        if (noteEl) noteEl.textContent = "Perubahan tersimpan otomatis di peramban ini saja (localStorage).";
+        return;
+      }
+      dbDoc = db.doc("state/entries");
+      if (noteEl) noteEl.textContent = "Perubahan tersimpan otomatis ke akun kamu.";
+
+      dbDoc.get().then(function (snap) {
+        if (snap.exists) {
+          var data = snap.data();
+          if (data && Array.isArray(data.entries) && data.entries.length) {
+            entries = data.entries;
+            saveLocal();
+            renderList();
+          }
+        } else {
+          dbDoc.set({ entries: entries, updatedAt: new Date().toISOString() }).catch(function () {});
+        }
+      }).catch(function () {});
+
+      dbDoc.onSnapshot(function (snap) {
+        if (snap.metadata.hasPendingWrites || !snap.exists) return;
+        var data = snap.data();
+        if (!data || !Array.isArray(data.entries)) return;
+        if (JSON.stringify(data.entries) !== JSON.stringify(entries)) {
+          entries = data.entries;
+          saveLocal();
+          renderList();
+        }
+      }, function () {});
+    }).catch(function () {
+      if (noteEl) noteEl.textContent = "Perubahan tersimpan otomatis di peramban ini saja (localStorage).";
+    });
+  }
+
+  function daysInMonthBefore(year, monthIndex) {
+    return new Date(year, monthIndex, 0).getDate();
+  }
+
+  function ymdBreakdown(earlier, later) {
+    var y = later.getFullYear() - earlier.getFullYear();
+    var m = later.getMonth() - earlier.getMonth();
+    var d = later.getDate() - earlier.getDate();
+    if (d < 0) {
+      m -= 1;
+      d += daysInMonthBefore(later.getFullYear(), later.getMonth());
+    }
+    if (m < 0) {
+      y -= 1;
+      m += 12;
+    }
+    return { y: y, m: m, d: d };
+  }
+
+  function fmtInt(n) { return Math.trunc(n).toLocaleString("id-ID"); }
+  function fmtDec2(n) { return n.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  function cardTemplate(entry) {
+    return (
+      '<div class="entry-card" data-id="' + entry.id + '">' +
+        '<div class="entry-top">' +
+          '<div class="entry-fields">' +
+            '<input class="label-input" type="text" value="' + escapeHtml(entry.label) + '" placeholder="Nama peristiwa (mis. Ulang tahun)" aria-label="Nama peristiwa">' +
+            '<div class="date-row">' +
+              '<input class="date-input" type="datetime-local" value="' + entry.date + '" aria-label="Tanggal acuan">' +
+              '<span class="status-badge" id="' + entry.id + '-badge"></span>' +
+            '</div>' +
+          '</div>' +
+          '<button class="delete-btn" type="button" aria-label="Hapus peristiwa">&times;</button>' +
+        '</div>' +
+        '<div class="headline-stat" id="' + entry.id + '-headline">—</div>' +
+        '<div class="stat-grid">' +
+          statTile(entry.id, "bulanhari", "Total Bulan &amp; Hari") +
+          statTile(entry.id, "minggu", "Total Minggu") +
+          statTile(entry.id, "hari", "Total Hari") +
+          statTile(entry.id, "jam", "Total Jam") +
+          statTile(entry.id, "menit", "Total Menit") +
+          statTile(entry.id, "detik", "Total Detik") +
+          statTile(entry.id, "desimal", "Dalam Tahun") +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function statTile(id, key, label) {
+    return '<div class="stat-tile"><span class="stat-label">' + label + '</span><span class="stat-value" id="' + id + '-' + key + '">—</span></div>';
+  }
+
+  function renderList() {
+    listEl.innerHTML = entries.map(cardTemplate).join("");
+    tick();
+  }
+
+  function computeAndFill(entry, now) {
+    var date = new Date(entry.date);
+    if (isNaN(date.getTime())) return;
+    var diffMs = now - date;
+    var isPast = diffMs >= 0;
+    var absMs = Math.abs(diffMs);
+
+    var earlier = isPast ? date : now;
+    var later = isPast ? now : date;
+    var ymd = ymdBreakdown(earlier, later);
+    var totalMonths = ymd.y * 12 + ymd.m;
+
+    var totalHari = Math.floor(absMs / 86400000);
+    var totalJam = Math.floor(absMs / 3600000);
+    var totalMenit = Math.floor(absMs / 60000);
+    var totalDetik = Math.floor(absMs / 1000);
+    var totalMinggu = Math.floor(totalHari / 7);
+    var desimalTahun = absMs / (365.2425 * 86400000);
+
+    var badge = document.getElementById(entry.id + "-badge");
+    if (badge) {
+      badge.textContent = isPast ? "Lalu" : "Akan datang";
+      badge.className = "status-badge " + (isPast ? "past" : "future");
+    }
+
+    var headline = document.getElementById(entry.id + "-headline");
+    if (headline) {
+      var suffix = isPast ? "yang lalu" : "lagi";
+      headline.innerHTML = ymd.y + " thn " + ymd.m + " bln " + ymd.d + " hr" +
+        '<span class="headline-suffix">' + suffix + '</span>';
+    }
+
+    setText(entry.id + "-bulanhari", fmtInt(totalMonths) + " bln " + ymd.d + " hr");
+    setText(entry.id + "-minggu", fmtInt(totalMinggu) + " mgu");
+    setText(entry.id + "-hari", fmtInt(totalHari) + " hr");
+    setText(entry.id + "-jam", fmtInt(totalJam) + " jam");
+    setText(entry.id + "-menit", fmtInt(totalMenit) + " mnt");
+    setText(entry.id + "-detik", fmtInt(totalDetik) + " dtk");
+    setText(entry.id + "-desimal", fmtDec2(desimalTahun) + " thn");
+  }
+
+  function setText(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function tick() {
+    var now = new Date();
+    clockEl.textContent = now.getFullYear() + "-" + two(now.getMonth() + 1) + "-" + two(now.getDate()) +
+      "  " + two(now.getHours()) + ":" + two(now.getMinutes()) + ":" + two(now.getSeconds());
+    entries.forEach(function (entry) { computeAndFill(entry, now); });
+  }
+
+  listEl.addEventListener("input", function (e) {
+    var card = e.target.closest(".entry-card");
+    if (!card) return;
+    var entry = entries.find(function (x) { return x.id === card.dataset.id; });
+    if (!entry) return;
+    if (e.target.classList.contains("label-input")) {
+      entry.label = e.target.value;
+      persist();
+    } else if (e.target.classList.contains("date-input") && e.target.value) {
+      entry.date = e.target.value;
+      persist();
+      tick();
+    }
+  });
+
+  listEl.addEventListener("click", function (e) {
+    var delBtn = e.target.closest(".delete-btn");
+    if (!delBtn) return;
+    var card = delBtn.closest(".entry-card");
+    entries = entries.filter(function (x) { return x.id !== card.dataset.id; });
+    renderList();
+    saveEntries();
+  });
+
+  document.getElementById("add-btn").addEventListener("click", function () {
+    entries.push({ id: uid(), label: "", date: toLocalInputValue(new Date()) });
+    renderList();
+    saveEntries();
+    var lastInput = listEl.querySelector(".entry-card:last-child .label-input");
+    if (lastInput) lastInput.focus();
+  });
+
+  entries = loadEntries();
+  renderList();
+  setInterval(tick, 1000);
+  initDb();
+})();
+</script>
