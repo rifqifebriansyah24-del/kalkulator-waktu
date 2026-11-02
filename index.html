@@ -910,11 +910,13 @@
   });
 
   document.getElementById("add-btn").addEventListener("click", function () {
-    entries.push({ id: uid(), label: "", date: toLocalInputValue(new Date()) });
+    var newEntry = { id: uid(), label: "", date: toLocalInputValue(new Date()) };
+    entries.push(newEntry);
     renderList();
     persist();
-    var lastInput = listEl.querySelector(".entry-card:last-child .label-input");
-    if (lastInput) lastInput.focus();
+    var card = listEl.querySelector('.entry-card[data-id="' + newEntry.id + '"]');
+    var newInput = card ? card.querySelector(".label-input") : null;
+    if (newInput) newInput.focus();
   });
 
   initTheme();
