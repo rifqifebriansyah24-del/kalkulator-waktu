@@ -1,4 +1,4 @@
-var CACHE_NAME = "kalkulator-waktu-v1";
+var CACHE_NAME = "kalkulator-waktu-v2";
 var PRECACHE_URLS = [
   "./",
   "./index.html",
@@ -35,6 +35,25 @@ self.addEventListener("fetch", function (event) {
   var url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" })
+        .then(function (response) {
+          if (response && response.status === 200) {
+            var copy = response.clone();
+            caches.open(CACHE_NAME).then(function (cache) { cache.put(event.request, copy); });
+          }
+          return response;
+        })
+        .catch(function () {
+          return caches.match(event.request).then(function (cached) {
+            return cached || caches.match("./index.html");
+          });
+        })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then(function (cached) {
       var networkFetch = fetch(event.request)
@@ -46,7 +65,6 @@ self.addEventListener("fetch", function (event) {
           return response;
         })
         .catch(function () {
-          if (event.request.mode === "navigate") return caches.match("./index.html");
           return cached;
         });
       return cached || networkFetch;
