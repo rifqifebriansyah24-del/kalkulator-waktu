@@ -1,6 +1,22 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Hitung umur, durasi sejak suatu tanggal, atau hitung mundur ke tanggal yang akan datang.">
+<meta name="theme-color" content="#1F535A">
+<meta name="theme-color" content="#5FBAB2" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kalkulator Waktu">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Kalkulator Waktu</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
+  /* Layout: single-column list, entries split into "Akan Datang" / "Sudah Lewat" sections and sorted by proximity to now; per-card detail stats collapse behind a disclosure so the headline stays the primary read */
   :root {
     --bg: #F3F5F7;
     --surface: #FFFFFF;
@@ -65,6 +81,8 @@
 
   * { box-sizing: border-box; }
 
+  html, body { margin: 0; padding: 0; }
+
   body {
     background: var(--bg);
     color: var(--text);
@@ -85,6 +103,41 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .theme-toggle {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .theme-toggle:hover {
+    color: var(--accent-strong);
+    border-color: var(--accent);
   }
 
   h1 {
@@ -126,13 +179,20 @@
     animation: pulse 2s ease-in-out infinite;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .live-dot { animation: none; }
-  }
-
   @keyframes pulse {
     0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(61, 122, 79, 0.35); }
     50% { opacity: 0.6; box-shadow: 0 0 0 5px rgba(61, 122, 79, 0); }
+  }
+
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot { animation: none; }
+    .entry-card { animation: none; }
+    .stat-details summary .chev { transition: none; }
   }
 
   .live-clock-label {
@@ -157,16 +217,66 @@
     gap: 16px;
   }
 
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 2px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .section-header:not(:first-child) {
+    margin-top: 4px;
+  }
+
+  .section-count {
+    font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0;
+    opacity: 0.75;
+  }
+
+  .empty-state {
+    border: 1.5px dashed var(--border);
+    border-radius: 14px;
+    padding: 28px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .empty-title {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .empty-sub {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
   .entry-card {
     background: var(--surface);
     border: 1px solid var(--border);
+    border-left-width: 3px;
     border-radius: 14px;
     padding: 18px 20px 20px;
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     gap: 14px;
+    animation: card-in 180ms ease-out;
   }
+
+  .entry-card.status-future { border-left-color: var(--status-future); }
+  .entry-card.status-past { border-left-color: var(--status-past); }
 
   .entry-top {
     display: flex;
@@ -251,8 +361,6 @@
     border: 1px solid var(--border);
     background: transparent;
     color: var(--text-muted);
-    font-size: 1rem;
-    line-height: 1;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -265,7 +373,7 @@
     border-color: var(--danger);
   }
 
-  .delete-btn:focus-visible, .add-btn:focus-visible, .label-input:focus-visible, .date-input:focus-visible {
+  .delete-btn:focus-visible, .add-btn:focus-visible, .label-input:focus-visible, .date-input:focus-visible, .theme-toggle:focus-visible, .stat-details summary:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
@@ -285,6 +393,32 @@
     color: var(--text-muted);
     margin-left: 4px;
   }
+
+  .stat-details summary {
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    color: var(--accent-strong);
+    padding: 2px 0;
+  }
+
+  .stat-details summary::-webkit-details-marker { display: none; }
+
+  .stat-details summary .chev {
+    width: 10px;
+    height: 10px;
+    transition: transform 150ms ease;
+    flex-shrink: 0;
+  }
+
+  .stat-details[open] summary .chev { transform: rotate(180deg); }
+
+  .stat-details .stat-grid { margin-top: 12px; }
 
   .stat-grid {
     display: grid;
@@ -375,11 +509,20 @@
     .stat-tile .stat-value { font-size: 1.05rem; font-weight: 600; white-space: nowrap; }
   }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <header>
-    <h1>Kalkulator Waktu</h1>
-    <p class="subtitle">Hitung umur, durasi sejak suatu tanggal, atau hitung mundur ke tanggal yang akan datang — semuanya diperbarui langsung tiap detik.</p>
+    <div class="header-top">
+      <div class="header-text">
+        <h1>Kalkulator Waktu</h1>
+        <p class="subtitle">Hitung umur, durasi sejak suatu tanggal, atau hitung mundur ke tanggal yang akan datang — semuanya diperbarui langsung tiap detik.</p>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Ganti tema">
+        <svg id="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
+      </button>
+    </div>
     <div class="live-clock-card">
       <span class="live-dot" aria-hidden="true"></span>
       <div>
@@ -399,12 +542,18 @@
 <script>
 (function () {
   var STORAGE_KEY = "kalkulator-waktu-entries-v1";
+  var THEME_KEY = "kalkulator-waktu-theme-v1";
   var listEl = document.getElementById("entry-list");
   var clockEl = document.getElementById("live-clock");
   var noteEl = document.getElementById("storage-note");
   var entries = [];
   var dbDoc = null;
   var dbSaveTimer = null;
+  var lastPastState = {};
+
+  var ICON_SUN = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>';
+  var ICON_MOON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+  var ICON_TRASH = '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>';
 
   function two(n) { return String(n).padStart(2, "0"); }
 
@@ -421,6 +570,53 @@
     return String(s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
+  }
+
+  function systemPrefersDark() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+
+  function effectiveThemeIsDark() {
+    var explicit = document.documentElement.getAttribute("data-theme");
+    if (explicit) return explicit === "dark";
+    return systemPrefersDark();
+  }
+
+  function updateThemeIcon() {
+    var icon = document.getElementById("theme-icon");
+    if (icon) icon.innerHTML = effectiveThemeIsDark() ? ICON_SUN : ICON_MOON;
+    var toggle = document.getElementById("theme-toggle");
+    if (toggle) toggle.setAttribute("aria-label", effectiveThemeIsDark() ? "Ganti ke mode terang" : "Ganti ke mode gelap");
+  }
+
+  function applyTheme(explicit) {
+    if (explicit) {
+      document.documentElement.setAttribute("data-theme", explicit);
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+    updateThemeIcon();
+  }
+
+  function initTheme() {
+    var saved = null;
+    try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+    applyTheme(saved);
+
+    var toggle = document.getElementById("theme-toggle");
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        var next = effectiveThemeIsDark() ? "light" : "dark";
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+        applyTheme(next);
+      });
+    }
+
+    if (window.matchMedia) {
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+        if (!document.documentElement.getAttribute("data-theme")) updateThemeIcon();
+      });
+    }
   }
 
   function loadEntries() {
@@ -516,9 +712,9 @@
   function fmtInt(n) { return Math.trunc(n).toLocaleString("id-ID"); }
   function fmtDec2(n) { return n.toLocaleString("id-ID", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-  function cardTemplate(entry) {
+  function cardTemplate(entry, isPast) {
     return (
-      '<div class="entry-card" data-id="' + entry.id + '">' +
+      '<div class="entry-card ' + (isPast ? "status-past" : "status-future") + '" data-id="' + entry.id + '">' +
         '<div class="entry-top">' +
           '<div class="entry-fields">' +
             '<input class="label-input" type="text" value="' + escapeHtml(entry.label) + '" placeholder="Nama peristiwa (mis. Ulang tahun)" aria-label="Nama peristiwa">' +
@@ -527,18 +723,23 @@
               '<span class="status-badge" id="' + entry.id + '-badge"></span>' +
             '</div>' +
           '</div>' +
-          '<button class="delete-btn" type="button" aria-label="Hapus peristiwa">&times;</button>' +
+          '<button class="delete-btn" type="button" aria-label="Hapus peristiwa">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON_TRASH + '</svg>' +
+          '</button>' +
         '</div>' +
         '<div class="headline-stat" id="' + entry.id + '-headline">—</div>' +
-        '<div class="stat-grid">' +
-          statTile(entry.id, "bulanhari", "Total Bulan &amp; Hari") +
-          statTile(entry.id, "minggu", "Total Minggu") +
-          statTile(entry.id, "hari", "Total Hari") +
-          statTile(entry.id, "jam", "Total Jam") +
-          statTile(entry.id, "menit", "Total Menit") +
-          statTile(entry.id, "detik", "Total Detik") +
-          statTile(entry.id, "desimal", "Dalam Tahun") +
-        '</div>' +
+        '<details class="stat-details">' +
+          '<summary>Rincian<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5"></path></svg></summary>' +
+          '<div class="stat-grid">' +
+            statTile(entry.id, "bulanhari", "Total Bulan &amp; Hari") +
+            statTile(entry.id, "minggu", "Total Minggu") +
+            statTile(entry.id, "hari", "Total Hari") +
+            statTile(entry.id, "jam", "Total Jam") +
+            statTile(entry.id, "menit", "Total Menit") +
+            statTile(entry.id, "detik", "Total Detik") +
+            statTile(entry.id, "desimal", "Dalam Tahun") +
+          '</div>' +
+        '</details>' +
       '</div>'
     );
   }
@@ -547,8 +748,46 @@
     return '<div class="stat-tile"><span class="stat-label">' + label + '</span><span class="stat-value" id="' + id + '-' + key + '">—</span></div>';
   }
 
+  function sectionHeader(label, count) {
+    return '<div class="section-header"><span>' + label + '</span><span class="section-count">' + count + '</span></div>';
+  }
+
+  function emptyStateTemplate() {
+    return '<div class="empty-state">' +
+      '<p class="empty-title">Belum ada peristiwa.</p>' +
+      '<p class="empty-sub">Tambahkan tanggal lahir, hari jadi, atau tenggat waktu lewat tombol di bawah.</p>' +
+    '</div>';
+  }
+
+  function splitAndSort(now) {
+    var upcoming = [], past = [];
+    entries.forEach(function (entry) {
+      var d = new Date(entry.date);
+      var isPast = isNaN(d.getTime()) ? false : now.getTime() >= d.getTime();
+      (isPast ? past : upcoming).push(entry);
+    });
+    upcoming.sort(function (a, b) { return new Date(a.date) - new Date(b.date); });
+    past.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
+    return { upcoming: upcoming, past: past };
+  }
+
   function renderList() {
-    listEl.innerHTML = entries.map(cardTemplate).join("");
+    if (!entries.length) {
+      listEl.innerHTML = emptyStateTemplate();
+      tick();
+      return;
+    }
+    var groups = splitAndSort(new Date());
+    var html = "";
+    if (groups.upcoming.length) {
+      html += sectionHeader("Akan Datang", groups.upcoming.length) +
+        groups.upcoming.map(function (entry) { return cardTemplate(entry, false); }).join("");
+    }
+    if (groups.past.length) {
+      html += sectionHeader("Sudah Lewat", groups.past.length) +
+        groups.past.map(function (entry) { return cardTemplate(entry, true); }).join("");
+    }
+    listEl.innerHTML = html;
     tick();
   }
 
@@ -602,6 +841,21 @@
     var now = new Date();
     clockEl.textContent = now.getFullYear() + "-" + two(now.getMonth() + 1) + "-" + two(now.getDate()) +
       "  " + two(now.getHours()) + ":" + two(now.getMinutes()) + ":" + two(now.getSeconds());
+
+    var needsRegroup = false;
+    entries.forEach(function (entry) {
+      var d = new Date(entry.date);
+      var isPastNow = !isNaN(d.getTime()) && now.getTime() >= d.getTime();
+      if (lastPastState[entry.id] !== undefined && lastPastState[entry.id] !== isPastNow) {
+        needsRegroup = true;
+      }
+      lastPastState[entry.id] = isPastNow;
+    });
+    if (needsRegroup) {
+      renderList();
+      return;
+    }
+
     entries.forEach(function (entry) { computeAndFill(entry, now); });
   }
 
@@ -626,20 +880,32 @@
     var card = delBtn.closest(".entry-card");
     entries = entries.filter(function (x) { return x.id !== card.dataset.id; });
     renderList();
-    saveEntries();
+    persist();
   });
 
   document.getElementById("add-btn").addEventListener("click", function () {
     entries.push({ id: uid(), label: "", date: toLocalInputValue(new Date()) });
     renderList();
-    saveEntries();
+    persist();
     var lastInput = listEl.querySelector(".entry-card:last-child .label-input");
     if (lastInput) lastInput.focus();
   });
 
+  initTheme();
   entries = loadEntries();
   renderList();
   setInterval(tick, 1000);
   initDb();
 })();
 </script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+</script>
+
+</body>
+</html>
