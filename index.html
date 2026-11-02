@@ -193,6 +193,7 @@
     .live-dot { animation: none; }
     .entry-card { animation: none; }
     .stat-details summary .chev { transition: none; }
+    .overlay-backdrop, .add-sheet { animation: none; }
   }
 
   .live-clock-label {
@@ -453,6 +454,138 @@
     overflow-wrap: break-word;
   }
 
+  .overlay-backdrop[hidden], .add-sheet[hidden] { display: none !important; }
+
+  .overlay-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 17, 0.45);
+    z-index: 20;
+    animation: backdrop-in 160ms ease-out;
+  }
+
+  @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+
+  .add-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 21;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 10px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 30px rgba(20, 30, 35, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 480px;
+    margin-inline: auto;
+    animation: sheet-in-mobile 200ms ease-out;
+  }
+
+  @keyframes sheet-in-mobile { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  @media (min-width: 560px) {
+    .add-sheet {
+      left: 50%;
+      right: auto;
+      bottom: auto;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      width: 100%;
+      padding: 20px;
+      animation: sheet-in-desktop 160ms ease-out;
+    }
+  }
+
+  @keyframes sheet-in-desktop { from { transform: translate(-50%, -50%) scale(0.97); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+
+  .add-sheet-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border);
+    margin-inline: auto;
+  }
+
+  @media (min-width: 560px) {
+    .add-sheet-handle { display: none; }
+  }
+
+  .add-sheet-title {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: 1.2rem;
+    margin: 0;
+  }
+
+  .add-sheet-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .add-sheet-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .add-sheet-input {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 11px 12px;
+    color-scheme: light dark;
+    width: 100%;
+  }
+
+  .add-sheet-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .add-sheet-cancel, .add-sheet-save {
+    flex: 1;
+    border-radius: 10px;
+    padding: 12px;
+    font-family: "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+
+  .add-sheet-cancel {
+    background: transparent;
+    color: var(--text-muted);
+  }
+
+  .add-sheet-cancel:hover { background: var(--surface-alt); }
+
+  .add-sheet-save {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    border-color: var(--accent);
+  }
+
+  .add-sheet-save:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+
+  body.no-scroll { overflow: hidden; }
+
+  .add-sheet-cancel:focus-visible, .add-sheet-save:focus-visible, .add-sheet-input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
   .add-btn {
     border: 1.5px dashed var(--accent);
     background: transparent;
@@ -546,6 +679,24 @@
   <button class="add-btn" id="add-btn" type="button">+ Tambah Momen</button>
 
   <footer class="note" id="storage-note">Menyambungkan penyimpanan otomatis…</footer>
+</div>
+
+<div class="overlay-backdrop" id="overlay-backdrop" hidden></div>
+<div class="add-sheet" id="add-sheet" role="dialog" aria-modal="true" aria-labelledby="add-sheet-title" hidden>
+  <div class="add-sheet-handle" aria-hidden="true"></div>
+  <h2 class="add-sheet-title" id="add-sheet-title">Momen Baru</h2>
+  <div class="add-sheet-field">
+    <label class="add-sheet-label" for="add-label-input">Nama momen</label>
+    <input class="add-sheet-input" id="add-label-input" type="text" placeholder="mis. Ulang tahun kamu">
+  </div>
+  <div class="add-sheet-field">
+    <label class="add-sheet-label" for="add-date-input">Tanggal &amp; jam</label>
+    <input class="add-sheet-input" id="add-date-input" type="datetime-local">
+  </div>
+  <div class="add-sheet-actions">
+    <button class="add-sheet-cancel" id="add-sheet-cancel" type="button">Batal</button>
+    <button class="add-sheet-save" id="add-sheet-save" type="button">Simpan</button>
+  </div>
 </div>
 
 <script>
@@ -909,15 +1060,77 @@
     persist();
   });
 
-  document.getElementById("add-btn").addEventListener("click", function () {
-    var newEntry = { id: uid(), label: "", date: toLocalInputValue(new Date()) };
+  var backdrop = document.getElementById("overlay-backdrop");
+  var sheet = document.getElementById("add-sheet");
+  var addLabelInput = document.getElementById("add-label-input");
+  var addDateInput = document.getElementById("add-date-input");
+  var addSaveBtn = document.getElementById("add-sheet-save");
+  var addCancelBtn = document.getElementById("add-sheet-cancel");
+  var sheetFocusables = [addLabelInput, addDateInput, addCancelBtn, addSaveBtn];
+  var focusBeforeSheet = null;
+
+  function onSheetKeydown(e) {
+    if (e.key === "Escape") {
+      closeAddSheet();
+      return;
+    }
+    if (e.key === "Enter" && (e.target === addLabelInput || e.target === addDateInput)) {
+      e.preventDefault();
+      saveNewEntry();
+      return;
+    }
+    if (e.key === "Tab") {
+      var first = sheetFocusables[0];
+      var last = sheetFocusables[sheetFocusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
+  function openAddSheet() {
+    focusBeforeSheet = document.activeElement;
+    addLabelInput.value = "";
+    addDateInput.value = toLocalInputValue(new Date());
+    backdrop.hidden = false;
+    sheet.hidden = false;
+    document.body.classList.add("no-scroll");
+    addLabelInput.focus();
+    document.addEventListener("keydown", onSheetKeydown);
+  }
+
+  function closeAddSheet() {
+    backdrop.hidden = true;
+    sheet.hidden = true;
+    document.body.classList.remove("no-scroll");
+    document.removeEventListener("keydown", onSheetKeydown);
+    if (focusBeforeSheet && typeof focusBeforeSheet.focus === "function") {
+      focusBeforeSheet.focus();
+    }
+  }
+
+  function saveNewEntry() {
+    var newEntry = {
+      id: uid(),
+      label: addLabelInput.value,
+      date: addDateInput.value || toLocalInputValue(new Date())
+    };
     entries.push(newEntry);
     renderList();
     persist();
+    closeAddSheet();
     var card = listEl.querySelector('.entry-card[data-id="' + newEntry.id + '"]');
-    var newInput = card ? card.querySelector(".label-input") : null;
-    if (newInput) newInput.focus();
-  });
+    if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  document.getElementById("add-btn").addEventListener("click", openAddSheet);
+  addCancelBtn.addEventListener("click", closeAddSheet);
+  backdrop.addEventListener("click", closeAddSheet);
+  addSaveBtn.addEventListener("click", saveNewEntry);
 
   initTheme();
   entries = loadEntries();
