@@ -122,8 +122,8 @@
 
   .theme-toggle {
     flex-shrink: 0;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 10px;
     border: 1px solid var(--border);
     background: var(--surface);
@@ -355,8 +355,8 @@
 
   .delete-btn {
     flex-shrink: 0;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: transparent;
@@ -476,10 +476,19 @@
   }
 
   @media (max-width: 480px) {
-    body { padding-inline: 16px; }
+    body { padding-inline: 16px; padding-block-end: 104px; }
     .entry-card { padding: 16px; position: relative; }
-    .entry-top { padding-right: 44px; }
+    .entry-top { padding-right: 64px; }
     .delete-btn { position: absolute; top: 16px; right: 16px; }
+    .add-btn {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      background: var(--surface);
+      box-shadow: 0 6px 20px rgba(20, 30, 35, 0.18), var(--shadow);
+      z-index: 5;
+    }
     .date-row { flex-direction: column; align-items: stretch; gap: 8px; }
     .date-input { flex: none; width: 100%; font-size: 0.95rem; padding: 9px 10px; }
     .status-badge { align-self: flex-start; }
@@ -517,7 +526,7 @@
     <div class="header-top">
       <div class="header-text">
         <h1>Kalkulator Waktu</h1>
-        <p class="subtitle">Hitung umur, durasi sejak suatu tanggal, atau hitung mundur ke tanggal yang akan datang — semuanya diperbarui langsung tiap detik.</p>
+        <p class="subtitle">Hitung umur, lama waktu sejak suatu tanggal, atau hitung mundur ke momen yang kamu tunggu — semuanya diperbarui otomatis tiap detik.</p>
       </div>
       <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Ganti tema">
         <svg id="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
@@ -534,7 +543,7 @@
 
   <div class="entry-list" id="entry-list"></div>
 
-  <button class="add-btn" id="add-btn" type="button">+ Tambah Peristiwa</button>
+  <button class="add-btn" id="add-btn" type="button">+ Tambah Momen</button>
 
   <footer class="note" id="storage-note">Menyambungkan penyimpanan otomatis…</footer>
 </div>
@@ -717,13 +726,13 @@
       '<div class="entry-card ' + (isPast ? "status-past" : "status-future") + '" data-id="' + entry.id + '">' +
         '<div class="entry-top">' +
           '<div class="entry-fields">' +
-            '<input class="label-input" type="text" value="' + escapeHtml(entry.label) + '" placeholder="Nama peristiwa (mis. Ulang tahun)" aria-label="Nama peristiwa">' +
+            '<input class="label-input" type="text" value="' + escapeHtml(entry.label) + '" placeholder="Nama momen (mis. Ulang tahun kamu)" aria-label="Nama momen">' +
             '<div class="date-row">' +
               '<input class="date-input" type="datetime-local" value="' + entry.date + '" aria-label="Tanggal acuan">' +
               '<span class="status-badge" id="' + entry.id + '-badge"></span>' +
             '</div>' +
           '</div>' +
-          '<button class="delete-btn" type="button" aria-label="Hapus peristiwa">' +
+          '<button class="delete-btn" type="button" aria-label="Hapus momen">' +
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON_TRASH + '</svg>' +
           '</button>' +
         '</div>' +
@@ -754,8 +763,8 @@
 
   function emptyStateTemplate() {
     return '<div class="empty-state">' +
-      '<p class="empty-title">Belum ada peristiwa.</p>' +
-      '<p class="empty-sub">Tambahkan tanggal lahir, hari jadi, atau tenggat waktu lewat tombol di bawah.</p>' +
+      '<p class="empty-title">Belum ada momen yang dicatat.</p>' +
+      '<p class="empty-sub">Tambahkan tanggal lahir, hari jadi, atau momen yang kamu tunggu lewat tombol di bawah.</p>' +
     '</div>';
   }
 
@@ -791,6 +800,18 @@
     tick();
   }
 
+  function friendlyDuration(ymd, totalHari, totalJam, totalMenit) {
+    if (ymd.y > 0) return ymd.m > 0 ? (ymd.y + " thn " + ymd.m + " bln") : (ymd.y + " thn");
+    if (ymd.m > 0) return ymd.d > 0 ? (ymd.m + " bln " + ymd.d + " hr") : (ymd.m + " bln");
+    if (totalHari > 0) return totalHari + " hari";
+    if (totalJam > 0) {
+      var sisaMenit = totalMenit % 60;
+      return sisaMenit > 0 ? (totalJam + " jam " + sisaMenit + " mnt") : (totalJam + " jam");
+    }
+    if (totalMenit > 0) return totalMenit + " menit";
+    return null;
+  }
+
   function computeAndFill(entry, now) {
     var date = new Date(entry.date);
     if (isNaN(date.getTime())) return;
@@ -818,9 +839,14 @@
 
     var headline = document.getElementById(entry.id + "-headline");
     if (headline) {
-      var suffix = isPast ? "yang lalu" : "lagi";
-      headline.innerHTML = ymd.y + " thn " + ymd.m + " bln " + ymd.d + " hr" +
-        '<span class="headline-suffix">' + suffix + '</span>';
+      var friendly = friendlyDuration(ymd, totalHari, totalJam, totalMenit);
+      if (friendly === null) {
+        headline.textContent = isPast ? "Baru saja" : "Sebentar lagi";
+      } else {
+        var suffix = isPast ? "yang lalu" : "lagi";
+        headline.innerHTML = friendly +
+          '<span class="headline-suffix">' + suffix + '</span>';
+      }
     }
 
     setText(entry.id + "-bulanhari", fmtInt(totalMonths) + " bln " + ymd.d + " hr");
