@@ -605,6 +605,20 @@
     min-height: 1.1em;
   }
 
+  .sync-now-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent-strong);
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 9px;
+    padding: 9px;
+    cursor: pointer;
+  }
+
+  .sync-now-btn:hover { background: var(--accent-soft); }
+
   .add-btn {
     border: 1.5px dashed var(--accent);
     background: transparent;
@@ -736,6 +750,7 @@
     <input class="add-sheet-input" id="sync-token-input" type="text" placeholder="Token dari Script Properties">
   </div>
   <p class="sync-status" id="sync-status"></p>
+  <button class="sync-now-btn" id="sync-now-btn" type="button" hidden>Sinkron Sekarang</button>
   <div class="add-sheet-actions">
     <button class="add-sheet-cancel" id="settings-cancel" type="button">Batal</button>
     <button class="add-sheet-save" id="settings-save" type="button">Simpan</button>
@@ -1248,6 +1263,7 @@
   var syncTokenInput = document.getElementById("sync-token-input");
   var settingsSaveBtn = document.getElementById("settings-save");
   var settingsCancelBtn = document.getElementById("settings-cancel");
+  var syncNowBtn = document.getElementById("sync-now-btn");
 
   var activeSheet = null;
   var focusBeforeSheet = null;
@@ -1328,9 +1344,11 @@
     if (!url || !token) {
       saveSyncConfig(null);
       setSyncStatus("Sinkronisasi diputus.");
+      syncNowBtn.hidden = true;
       return;
     }
     connectSync(url, token);
+    syncNowBtn.hidden = false;
   }
 
   document.getElementById("sync-settings-btn").addEventListener("click", function () {
@@ -1338,10 +1356,15 @@
     syncUrlInput.value = cfg ? cfg.url : "";
     syncTokenInput.value = cfg ? cfg.token : "";
     setSyncStatus(cfg ? "Tersambung ke Google Sheets." : "Belum tersambung.");
+    syncNowBtn.hidden = !cfg;
     openSheet(settingsSheet, [syncUrlInput, syncTokenInput, settingsCancelBtn, settingsSaveBtn], saveSyncSettings);
   });
   settingsCancelBtn.addEventListener("click", closeSheet);
   settingsSaveBtn.addEventListener("click", saveSyncSettings);
+  syncNowBtn.addEventListener("click", function () {
+    setSyncStatus("Menyinkronkan…");
+    doSheetPush();
+  });
 
   initTheme();
   entries = loadEntries();
