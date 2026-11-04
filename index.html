@@ -120,7 +120,13 @@
     flex: 1 1 auto;
   }
 
-  .theme-toggle {
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .icon-btn {
     flex-shrink: 0;
     width: 44px;
     height: 44px;
@@ -135,7 +141,7 @@
     cursor: pointer;
   }
 
-  .theme-toggle:hover {
+  .icon-btn:hover {
     color: var(--accent-strong);
     border-color: var(--accent);
   }
@@ -374,7 +380,7 @@
     border-color: var(--danger);
   }
 
-  .delete-btn:focus-visible, .add-btn:focus-visible, .label-input:focus-visible, .date-input:focus-visible, .theme-toggle:focus-visible, .stat-details summary:focus-visible {
+  .delete-btn:focus-visible, .add-btn:focus-visible, .label-input:focus-visible, .date-input:focus-visible, .icon-btn:focus-visible, .stat-details summary:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
@@ -586,6 +592,19 @@
     outline-offset: 2px;
   }
 
+  .settings-help {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .sync-status {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    min-height: 1.1em;
+  }
+
   .add-btn {
     border: 1.5px dashed var(--accent);
     background: transparent;
@@ -661,9 +680,14 @@
         <h1>Kalkulator Waktu</h1>
         <p class="subtitle">Hitung umur, lama waktu sejak suatu tanggal, atau hitung mundur ke momen yang kamu tunggu — semuanya diperbarui otomatis tiap detik.</p>
       </div>
-      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Ganti tema">
-        <svg id="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
-      </button>
+      <div class="header-actions">
+        <button class="icon-btn" id="sync-settings-btn" type="button" aria-label="Pengaturan sinkronisasi">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Ganti tema">
+          <svg id="theme-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
+        </button>
+      </div>
     </div>
     <div class="live-clock-card">
       <span class="live-dot" aria-hidden="true"></span>
@@ -699,10 +723,30 @@
   </div>
 </div>
 
+<div class="add-sheet" id="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-sheet-title" hidden>
+  <div class="add-sheet-handle" aria-hidden="true"></div>
+  <h2 class="add-sheet-title" id="settings-sheet-title">Sinkron ke Google Sheets</h2>
+  <p class="settings-help">Tempel URL Web App &amp; token dari Apps Script kamu. Kosongkan kedua kolom lalu Simpan buat memutus sinkronisasi.</p>
+  <div class="add-sheet-field">
+    <label class="add-sheet-label" for="sync-url-input">URL Web App</label>
+    <input class="add-sheet-input" id="sync-url-input" type="url" placeholder="https://script.google.com/macros/s/…/exec">
+  </div>
+  <div class="add-sheet-field">
+    <label class="add-sheet-label" for="sync-token-input">Token</label>
+    <input class="add-sheet-input" id="sync-token-input" type="text" placeholder="Token dari Script Properties">
+  </div>
+  <p class="sync-status" id="sync-status"></p>
+  <div class="add-sheet-actions">
+    <button class="add-sheet-cancel" id="settings-cancel" type="button">Batal</button>
+    <button class="add-sheet-save" id="settings-save" type="button">Simpan</button>
+  </div>
+</div>
+
 <script>
 (function () {
   var STORAGE_KEY = "kalkulator-waktu-entries-v1";
   var THEME_KEY = "kalkulator-waktu-theme-v1";
+  var SYNC_KEY = "kalkulator-waktu-sync-v1";
   var listEl = document.getElementById("entry-list");
   var clockEl = document.getElementById("live-clock");
   var noteEl = document.getElementById("storage-note");
@@ -802,11 +846,13 @@
 
   function persist() {
     saveLocal();
-    if (!dbDoc) return;
-    clearTimeout(dbSaveTimer);
-    dbSaveTimer = setTimeout(function () {
-      dbDoc.set({ entries: entries, updatedAt: new Date().toISOString() }).catch(function () {});
-    }, 500);
+    if (dbDoc) {
+      clearTimeout(dbSaveTimer);
+      dbSaveTimer = setTimeout(function () {
+        dbDoc.set({ entries: entries, updatedAt: new Date().toISOString() }).catch(function () {});
+      }, 500);
+    }
+    pushToSheet();
   }
 
   function initDb() {
@@ -848,6 +894,136 @@
     }).catch(function () {
       if (noteEl) noteEl.textContent = "Perubahan tersimpan otomatis di peramban ini saja (localStorage).";
     });
+  }
+
+  function getSyncConfig() {
+    try {
+      var raw = localStorage.getItem(SYNC_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+
+  function saveSyncConfig(cfg) {
+    try {
+      if (cfg) localStorage.setItem(SYNC_KEY, JSON.stringify(cfg));
+      else localStorage.removeItem(SYNC_KEY);
+    } catch (e) {}
+  }
+
+  function nowTimeLabel() {
+    var d = new Date();
+    return two(d.getHours()) + ":" + two(d.getMinutes());
+  }
+
+  function setSyncStatus(text) {
+    var el = document.getElementById("sync-status");
+    if (el) el.textContent = text;
+  }
+
+  function sheetUrlWithToken(cfg) {
+    var sep = cfg.url.indexOf("?") >= 0 ? "&" : "?";
+    return cfg.url + sep + "token=" + encodeURIComponent(cfg.token);
+  }
+
+  var sheetPushTimer = null;
+
+  function doSheetPush() {
+    var cfg = getSyncConfig();
+    if (!cfg) return;
+    fetch(cfg.url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ token: cfg.token, entries: entries })
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && data.error) {
+          setSyncStatus("Token atau URL salah.");
+        } else {
+          setSyncStatus("Tersinkron ke Google Sheets · " + nowTimeLabel());
+        }
+      })
+      .catch(function () {
+        setSyncStatus("Sinkron gagal, akan dicoba lagi (cek koneksi).");
+      });
+  }
+
+  function pushToSheet() {
+    if (!getSyncConfig()) return;
+    clearTimeout(sheetPushTimer);
+    sheetPushTimer = setTimeout(doSheetPush, 600);
+  }
+
+  function pullFromSheet(silent) {
+    var cfg = getSyncConfig();
+    if (!cfg) return;
+    fetch(sheetUrlWithToken(cfg))
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data || data.error || !Array.isArray(data.entries)) {
+          if (!silent) setSyncStatus("Token atau URL salah.");
+          return;
+        }
+        if (JSON.stringify(data.entries) !== JSON.stringify(entries)) {
+          entries = data.entries;
+          saveLocal();
+          renderList();
+        }
+        if (!silent) setSyncStatus("Tersinkron ke Google Sheets · " + nowTimeLabel());
+      })
+      .catch(function () {
+        if (!silent) setSyncStatus("Sinkron gagal, cek koneksi.");
+      });
+  }
+
+  var syncPollStarted = false;
+
+  function startSyncPolling() {
+    if (syncPollStarted) return;
+    syncPollStarted = true;
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") pullFromSheet(true);
+    });
+    setInterval(function () {
+      if (document.visibilityState === "visible") pullFromSheet(true);
+    }, 30000);
+  }
+
+  function connectSync(url, token) {
+    saveSyncConfig({ url: url, token: token });
+    setSyncStatus("Menghubungkan…");
+    fetch(sheetUrlWithToken({ url: url, token: token }))
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data || data.error) {
+          saveSyncConfig(null);
+          setSyncStatus("Token atau URL salah. Cek lagi ya.");
+          return;
+        }
+        if (Array.isArray(data.entries) && data.entries.length) {
+          entries = data.entries;
+          saveLocal();
+          renderList();
+          setSyncStatus("Data dari Google Sheets dimuat · " + nowTimeLabel());
+        } else if (entries.length) {
+          doSheetPush();
+        } else {
+          setSyncStatus("Terhubung ke Google Sheets.");
+        }
+        startSyncPolling();
+      })
+      .catch(function () {
+        saveSyncConfig(null);
+        setSyncStatus("Gagal terhubung. Cek URL & koneksi.");
+      });
+  }
+
+  function initSync() {
+    var cfg = getSyncConfig();
+    if (!cfg) return;
+    pullFromSheet(true);
+    startSyncPolling();
   }
 
   function daysInMonthBefore(year, monthIndex) {
@@ -1066,22 +1242,31 @@
   var addDateInput = document.getElementById("add-date-input");
   var addSaveBtn = document.getElementById("add-sheet-save");
   var addCancelBtn = document.getElementById("add-sheet-cancel");
-  var sheetFocusables = [addLabelInput, addDateInput, addCancelBtn, addSaveBtn];
+
+  var settingsSheet = document.getElementById("settings-sheet");
+  var syncUrlInput = document.getElementById("sync-url-input");
+  var syncTokenInput = document.getElementById("sync-token-input");
+  var settingsSaveBtn = document.getElementById("settings-save");
+  var settingsCancelBtn = document.getElementById("settings-cancel");
+
+  var activeSheet = null;
   var focusBeforeSheet = null;
 
   function onSheetKeydown(e) {
+    if (!activeSheet) return;
     if (e.key === "Escape") {
-      closeAddSheet();
+      closeSheet();
       return;
     }
-    if (e.key === "Enter" && (e.target === addLabelInput || e.target === addDateInput)) {
+    if (e.key === "Enter" && activeSheet.onEnter && e.target.tagName === "INPUT") {
       e.preventDefault();
-      saveNewEntry();
+      activeSheet.onEnter();
       return;
     }
     if (e.key === "Tab") {
-      var first = sheetFocusables[0];
-      var last = sheetFocusables[sheetFocusables.length - 1];
+      var f = activeSheet.focusables;
+      var first = f[0];
+      var last = f[f.length - 1];
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
@@ -1092,22 +1277,23 @@
     }
   }
 
-  function openAddSheet() {
+  function openSheet(el, focusables, onEnter) {
     focusBeforeSheet = document.activeElement;
-    addLabelInput.value = "";
-    addDateInput.value = toLocalInputValue(new Date());
+    activeSheet = { el: el, focusables: focusables, onEnter: onEnter };
     backdrop.hidden = false;
-    sheet.hidden = false;
+    el.hidden = false;
     document.body.classList.add("no-scroll");
-    addLabelInput.focus();
+    focusables[0].focus();
     document.addEventListener("keydown", onSheetKeydown);
   }
 
-  function closeAddSheet() {
+  function closeSheet() {
+    if (!activeSheet) return;
+    activeSheet.el.hidden = true;
     backdrop.hidden = true;
-    sheet.hidden = true;
     document.body.classList.remove("no-scroll");
     document.removeEventListener("keydown", onSheetKeydown);
+    activeSheet = null;
     if (focusBeforeSheet && typeof focusBeforeSheet.focus === "function") {
       focusBeforeSheet.focus();
     }
@@ -1122,21 +1308,47 @@
     entries.push(newEntry);
     renderList();
     persist();
-    closeAddSheet();
+    closeSheet();
     var card = listEl.querySelector('.entry-card[data-id="' + newEntry.id + '"]');
     if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  document.getElementById("add-btn").addEventListener("click", openAddSheet);
-  addCancelBtn.addEventListener("click", closeAddSheet);
-  backdrop.addEventListener("click", closeAddSheet);
+  document.getElementById("add-btn").addEventListener("click", function () {
+    addLabelInput.value = "";
+    addDateInput.value = toLocalInputValue(new Date());
+    openSheet(sheet, [addLabelInput, addDateInput, addCancelBtn, addSaveBtn], saveNewEntry);
+  });
+  addCancelBtn.addEventListener("click", closeSheet);
   addSaveBtn.addEventListener("click", saveNewEntry);
+  backdrop.addEventListener("click", closeSheet);
+
+  function saveSyncSettings() {
+    var url = syncUrlInput.value.trim();
+    var token = syncTokenInput.value.trim();
+    if (!url || !token) {
+      saveSyncConfig(null);
+      setSyncStatus("Sinkronisasi diputus.");
+      return;
+    }
+    connectSync(url, token);
+  }
+
+  document.getElementById("sync-settings-btn").addEventListener("click", function () {
+    var cfg = getSyncConfig();
+    syncUrlInput.value = cfg ? cfg.url : "";
+    syncTokenInput.value = cfg ? cfg.token : "";
+    setSyncStatus(cfg ? "Tersambung ke Google Sheets." : "Belum tersambung.");
+    openSheet(settingsSheet, [syncUrlInput, syncTokenInput, settingsCancelBtn, settingsSaveBtn], saveSyncSettings);
+  });
+  settingsCancelBtn.addEventListener("click", closeSheet);
+  settingsSaveBtn.addEventListener("click", saveSyncSettings);
 
   initTheme();
   entries = loadEntries();
   renderList();
   setInterval(tick, 1000);
   initDb();
+  initSync();
 })();
 </script>
 
