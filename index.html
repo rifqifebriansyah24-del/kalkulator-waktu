@@ -981,6 +981,12 @@
     if (el) el.textContent = text;
   }
 
+  function muchSmaller(a, b) {
+    if (b === 0) return false;
+    if (a === 0) return true;
+    return (b - a) >= 3 && a < b / 2;
+  }
+
   function sheetUrlWithToken(cfg) {
     var sep = cfg.url.indexOf("?") >= 0 ? "&" : "?";
     return cfg.url + sep + "token=" + encodeURIComponent(cfg.token);
@@ -988,9 +994,7 @@
 
   var sheetPushTimer = null;
 
-  function doSheetPush() {
-    var cfg = getSyncConfig();
-    if (!cfg) return;
+  function reallyPushToSheet(cfg) {
     fetch(cfg.url, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -1009,6 +1013,25 @@
       });
   }
 
+  function doSheetPush() {
+    var cfg = getSyncConfig();
+    if (!cfg) return;
+    fetch(sheetUrlWithToken(cfg))
+      .then(function (res) { return res.json(); })
+      .then(function (remoteData) {
+        var remoteCount = (remoteData && Array.isArray(remoteData.entries)) ? remoteData.entries.length : 0;
+        var localCount = entries.length;
+        if (muchSmaller(localCount, remoteCount)) {
+          setSyncStatus("Dibatalkan: Sheets punya " + remoteCount + " momen, lokal cuma " + localCount + ". Push otomatis dihentikan biar aman. Tarik dulu (buka Pengaturan lagi) kalau mau pakai data Sheets.");
+          return;
+        }
+        reallyPushToSheet(cfg);
+      })
+      .catch(function () {
+        reallyPushToSheet(cfg);
+      });
+  }
+
   function pushToSheet() {
     if (!getSyncConfig()) return;
     clearTimeout(sheetPushTimer);
@@ -1023,6 +1046,10 @@
       .then(function (data) {
         if (!data || data.error || !Array.isArray(data.entries)) {
           if (!silent) setSyncStatus("Token atau URL salah.");
+          return;
+        }
+        if (muchSmaller(data.entries.length, entries.length)) {
+          if (!silent) setSyncStatus("Sheets cuma punya " + data.entries.length + " momen, lokal punya " + entries.length + ". Nggak ditarik otomatis biar aman.");
           return;
         }
         if (JSON.stringify(data.entries) !== JSON.stringify(entries)) {
@@ -1061,8 +1088,11 @@
           setSyncStatus("Token atau URL salah. Cek lagi ya.");
           return;
         }
-        if (Array.isArray(data.entries) && data.entries.length) {
-          entries = data.entries;
+        var remoteEntries = Array.isArray(data.entries) ? data.entries : [];
+        if (remoteEntries.length > 0 && muchSmaller(remoteEntries.length, entries.length)) {
+          setSyncStatus("Sheets cuma punya " + remoteEntries.length + " momen, lokal punya " + entries.length + ". Belum digabung otomatis biar aman — tap 'Sinkron Sekarang' kalau memang mau timpa Sheets pakai data lokal.");
+        } else if (remoteEntries.length) {
+          entries = remoteEntries;
           saveLocal();
           renderList();
           setSyncStatus("Data dari Google Sheets dimuat · " + nowTimeLabel());
