@@ -619,6 +619,35 @@
 
   .sync-now-btn:hover { background: var(--accent-soft); }
 
+  .settings-help code {
+    font-family: "IBM Plex Mono", monospace;
+    background: var(--surface-alt);
+    padding: 1px 4px;
+    border-radius: 4px;
+  }
+
+  .bulk-textarea {
+    resize: vertical;
+    min-height: 130px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .bulk-link {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 0.8rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px;
+    align-self: center;
+  }
+
+  .bulk-link:hover { color: var(--accent-strong); }
+
   .add-btn {
     border: 1.5px dashed var(--accent);
     background: transparent;
@@ -715,6 +744,7 @@
   <div class="entry-list" id="entry-list"></div>
 
   <button class="add-btn" id="add-btn" type="button">+ Tambah Momen</button>
+  <button class="bulk-link" id="bulk-link" type="button">Impor banyak momen sekaligus</button>
 
   <footer class="note" id="storage-note">Menyambungkan penyimpanan otomatis…</footer>
 </div>
@@ -754,6 +784,21 @@
   <div class="add-sheet-actions">
     <button class="add-sheet-cancel" id="settings-cancel" type="button">Batal</button>
     <button class="add-sheet-save" id="settings-save" type="button">Simpan</button>
+  </div>
+</div>
+
+<div class="add-sheet" id="bulk-sheet" role="dialog" aria-modal="true" aria-labelledby="bulk-sheet-title" hidden>
+  <div class="add-sheet-handle" aria-hidden="true"></div>
+  <h2 class="add-sheet-title" id="bulk-sheet-title">Impor Banyak Momen</h2>
+  <p class="settings-help">Satu momen per baris, format: <code>Nama Momen | 2026-11-02 14:00</code></p>
+  <div class="add-sheet-field">
+    <label class="add-sheet-label" for="bulk-input">Daftar momen</label>
+    <textarea class="add-sheet-input bulk-textarea" id="bulk-input" rows="6" placeholder="Belajar PM | 2023-10-01 14:11&#10;Lulus Kuliah | 2022-12-21 14:12"></textarea>
+  </div>
+  <p class="sync-status" id="bulk-error"></p>
+  <div class="add-sheet-actions">
+    <button class="add-sheet-cancel" id="bulk-cancel" type="button">Batal</button>
+    <button class="add-sheet-save" id="bulk-save" type="button">Impor</button>
   </div>
 </div>
 
@@ -1265,6 +1310,11 @@
   var settingsCancelBtn = document.getElementById("settings-cancel");
   var syncNowBtn = document.getElementById("sync-now-btn");
 
+  var bulkSheet = document.getElementById("bulk-sheet");
+  var bulkInput = document.getElementById("bulk-input");
+  var bulkSaveBtn = document.getElementById("bulk-save");
+  var bulkCancelBtn = document.getElementById("bulk-cancel");
+
   var activeSheet = null;
   var focusBeforeSheet = null;
 
@@ -1365,6 +1415,54 @@
     setSyncStatus("Menyinkronkan…");
     doSheetPush();
   });
+
+  function parseBulkLine(line) {
+    var idx = line.indexOf("|");
+    if (idx === -1) return null;
+    var label = line.slice(0, idx).trim();
+    var dateRaw = line.slice(idx + 1).trim();
+    var m = dateRaw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/);
+    if (!m || !label) return null;
+    return { label: label, date: m[1] + "-" + m[2] + "-" + m[3] + "T" + m[4] + ":" + m[5] };
+  }
+
+  function doBulkImport() {
+    var lines = bulkInput.value.split("\n");
+    var parsed = [];
+    var badLines = [];
+    lines.forEach(function (line, i) {
+      var trimmed = line.trim();
+      if (!trimmed) return;
+      var p = parseBulkLine(trimmed);
+      if (p) parsed.push(p);
+      else badLines.push(i + 1);
+    });
+    var errEl = document.getElementById("bulk-error");
+    if (badLines.length) {
+      errEl.textContent = "Baris " + badLines.join(", ") + " formatnya nggak dikenali. Format: Nama | 2026-11-02 14:00";
+      return;
+    }
+    if (!parsed.length) {
+      errEl.textContent = "Belum ada baris yang valid.";
+      return;
+    }
+    parsed.forEach(function (p) {
+      entries.push({ id: uid(), label: p.label, date: p.date });
+    });
+    renderList();
+    persist();
+    bulkInput.value = "";
+    errEl.textContent = "";
+    closeSheet();
+  }
+
+  document.getElementById("bulk-link").addEventListener("click", function () {
+    bulkInput.value = "";
+    document.getElementById("bulk-error").textContent = "";
+    openSheet(bulkSheet, [bulkInput, bulkCancelBtn, bulkSaveBtn]);
+  });
+  bulkCancelBtn.addEventListener("click", closeSheet);
+  bulkSaveBtn.addEventListener("click", doBulkImport);
 
   initTheme();
   entries = loadEntries();
