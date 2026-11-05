@@ -605,6 +605,49 @@
     min-height: 1.1em;
   }
 
+  .sync-now-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent-strong);
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 9px;
+    padding: 9px;
+    cursor: pointer;
+  }
+
+  .sync-now-btn:hover { background: var(--accent-soft); }
+
+  .settings-help code {
+    font-family: "IBM Plex Mono", monospace;
+    background: var(--surface-alt);
+    padding: 1px 4px;
+    border-radius: 4px;
+  }
+
+  .bulk-textarea {
+    resize: vertical;
+    min-height: 130px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .bulk-link {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 0.8rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 4px;
+    align-self: center;
+  }
+
+  .bulk-link:hover { color: var(--accent-strong); }
+
   .add-btn {
     border: 1.5px dashed var(--accent);
     background: transparent;
@@ -701,6 +744,7 @@
   <div class="entry-list" id="entry-list"></div>
 
   <button class="add-btn" id="add-btn" type="button">+ Tambah Momen</button>
+  <button class="bulk-link" id="bulk-link" type="button">Impor banyak momen sekaligus</button>
 
   <footer class="note" id="storage-note">Menyambungkan penyimpanan otomatis…</footer>
 </div>
@@ -736,9 +780,25 @@
     <input class="add-sheet-input" id="sync-token-input" type="text" placeholder="Token dari Script Properties">
   </div>
   <p class="sync-status" id="sync-status"></p>
+  <button class="sync-now-btn" id="sync-now-btn" type="button" hidden>Sinkron Sekarang</button>
   <div class="add-sheet-actions">
     <button class="add-sheet-cancel" id="settings-cancel" type="button">Batal</button>
     <button class="add-sheet-save" id="settings-save" type="button">Simpan</button>
+  </div>
+</div>
+
+<div class="add-sheet" id="bulk-sheet" role="dialog" aria-modal="true" aria-labelledby="bulk-sheet-title" hidden>
+  <div class="add-sheet-handle" aria-hidden="true"></div>
+  <h2 class="add-sheet-title" id="bulk-sheet-title">Impor Banyak Momen</h2>
+  <p class="settings-help">Satu momen per baris, format: <code>Nama Momen | 2026-11-02 14:00</code></p>
+  <div class="add-sheet-field">
+    <label class="add-sheet-label" for="bulk-input">Daftar momen</label>
+    <textarea class="add-sheet-input bulk-textarea" id="bulk-input" rows="6" placeholder="Belajar PM | 2023-10-01 14:11&#10;Lulus Kuliah | 2022-12-21 14:12"></textarea>
+  </div>
+  <p class="sync-status" id="bulk-error"></p>
+  <div class="add-sheet-actions">
+    <button class="add-sheet-cancel" id="bulk-cancel" type="button">Batal</button>
+    <button class="add-sheet-save" id="bulk-save" type="button">Impor</button>
   </div>
 </div>
 
@@ -921,6 +981,12 @@
     if (el) el.textContent = text;
   }
 
+  function muchSmaller(a, b) {
+    if (b === 0) return false;
+    if (a === 0) return true;
+    return (b - a) >= 3 && a < b / 2;
+  }
+
   function sheetUrlWithToken(cfg) {
     var sep = cfg.url.indexOf("?") >= 0 ? "&" : "?";
     return cfg.url + sep + "token=" + encodeURIComponent(cfg.token);
@@ -928,9 +994,7 @@
 
   var sheetPushTimer = null;
 
-  function doSheetPush() {
-    var cfg = getSyncConfig();
-    if (!cfg) return;
+  function reallyPushToSheet(cfg) {
     fetch(cfg.url, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -949,6 +1013,25 @@
       });
   }
 
+  function doSheetPush() {
+    var cfg = getSyncConfig();
+    if (!cfg) return;
+    fetch(sheetUrlWithToken(cfg))
+      .then(function (res) { return res.json(); })
+      .then(function (remoteData) {
+        var remoteCount = (remoteData && Array.isArray(remoteData.entries)) ? remoteData.entries.length : 0;
+        var localCount = entries.length;
+        if (muchSmaller(localCount, remoteCount)) {
+          setSyncStatus("Dibatalkan: Sheets punya " + remoteCount + " momen, lokal cuma " + localCount + ". Push otomatis dihentikan biar aman. Tarik dulu (buka Pengaturan lagi) kalau mau pakai data Sheets.");
+          return;
+        }
+        reallyPushToSheet(cfg);
+      })
+      .catch(function () {
+        reallyPushToSheet(cfg);
+      });
+  }
+
   function pushToSheet() {
     if (!getSyncConfig()) return;
     clearTimeout(sheetPushTimer);
@@ -963,6 +1046,10 @@
       .then(function (data) {
         if (!data || data.error || !Array.isArray(data.entries)) {
           if (!silent) setSyncStatus("Token atau URL salah.");
+          return;
+        }
+        if (muchSmaller(data.entries.length, entries.length)) {
+          if (!silent) setSyncStatus("Sheets cuma punya " + data.entries.length + " momen, lokal punya " + entries.length + ". Nggak ditarik otomatis biar aman.");
           return;
         }
         if (JSON.stringify(data.entries) !== JSON.stringify(entries)) {
@@ -1001,8 +1088,11 @@
           setSyncStatus("Token atau URL salah. Cek lagi ya.");
           return;
         }
-        if (Array.isArray(data.entries) && data.entries.length) {
-          entries = data.entries;
+        var remoteEntries = Array.isArray(data.entries) ? data.entries : [];
+        if (remoteEntries.length > 0 && muchSmaller(remoteEntries.length, entries.length)) {
+          setSyncStatus("Sheets cuma punya " + remoteEntries.length + " momen, lokal punya " + entries.length + ". Belum digabung otomatis biar aman — tap 'Sinkron Sekarang' kalau memang mau timpa Sheets pakai data lokal.");
+        } else if (remoteEntries.length) {
+          entries = remoteEntries;
           saveLocal();
           renderList();
           setSyncStatus("Data dari Google Sheets dimuat · " + nowTimeLabel());
@@ -1248,6 +1338,12 @@
   var syncTokenInput = document.getElementById("sync-token-input");
   var settingsSaveBtn = document.getElementById("settings-save");
   var settingsCancelBtn = document.getElementById("settings-cancel");
+  var syncNowBtn = document.getElementById("sync-now-btn");
+
+  var bulkSheet = document.getElementById("bulk-sheet");
+  var bulkInput = document.getElementById("bulk-input");
+  var bulkSaveBtn = document.getElementById("bulk-save");
+  var bulkCancelBtn = document.getElementById("bulk-cancel");
 
   var activeSheet = null;
   var focusBeforeSheet = null;
@@ -1328,9 +1424,11 @@
     if (!url || !token) {
       saveSyncConfig(null);
       setSyncStatus("Sinkronisasi diputus.");
+      syncNowBtn.hidden = true;
       return;
     }
     connectSync(url, token);
+    syncNowBtn.hidden = false;
   }
 
   document.getElementById("sync-settings-btn").addEventListener("click", function () {
@@ -1338,10 +1436,63 @@
     syncUrlInput.value = cfg ? cfg.url : "";
     syncTokenInput.value = cfg ? cfg.token : "";
     setSyncStatus(cfg ? "Tersambung ke Google Sheets." : "Belum tersambung.");
+    syncNowBtn.hidden = !cfg;
     openSheet(settingsSheet, [syncUrlInput, syncTokenInput, settingsCancelBtn, settingsSaveBtn], saveSyncSettings);
   });
   settingsCancelBtn.addEventListener("click", closeSheet);
   settingsSaveBtn.addEventListener("click", saveSyncSettings);
+  syncNowBtn.addEventListener("click", function () {
+    setSyncStatus("Menyinkronkan…");
+    doSheetPush();
+  });
+
+  function parseBulkLine(line) {
+    var idx = line.indexOf("|");
+    if (idx === -1) return null;
+    var label = line.slice(0, idx).trim();
+    var dateRaw = line.slice(idx + 1).trim();
+    var m = dateRaw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/);
+    if (!m || !label) return null;
+    return { label: label, date: m[1] + "-" + m[2] + "-" + m[3] + "T" + m[4] + ":" + m[5] };
+  }
+
+  function doBulkImport() {
+    var lines = bulkInput.value.split("\n");
+    var parsed = [];
+    var badLines = [];
+    lines.forEach(function (line, i) {
+      var trimmed = line.trim();
+      if (!trimmed) return;
+      var p = parseBulkLine(trimmed);
+      if (p) parsed.push(p);
+      else badLines.push(i + 1);
+    });
+    var errEl = document.getElementById("bulk-error");
+    if (badLines.length) {
+      errEl.textContent = "Baris " + badLines.join(", ") + " formatnya nggak dikenali. Format: Nama | 2026-11-02 14:00";
+      return;
+    }
+    if (!parsed.length) {
+      errEl.textContent = "Belum ada baris yang valid.";
+      return;
+    }
+    parsed.forEach(function (p) {
+      entries.push({ id: uid(), label: p.label, date: p.date });
+    });
+    renderList();
+    persist();
+    bulkInput.value = "";
+    errEl.textContent = "";
+    closeSheet();
+  }
+
+  document.getElementById("bulk-link").addEventListener("click", function () {
+    bulkInput.value = "";
+    document.getElementById("bulk-error").textContent = "";
+    openSheet(bulkSheet, [bulkInput, bulkCancelBtn, bulkSaveBtn]);
+  });
+  bulkCancelBtn.addEventListener("click", closeSheet);
+  bulkSaveBtn.addEventListener("click", doBulkImport);
 
   initTheme();
   entries = loadEntries();
