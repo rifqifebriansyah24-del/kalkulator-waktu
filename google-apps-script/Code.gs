@@ -55,6 +55,13 @@ function doPost(e) {
   var entries = Array.isArray(body.entries) ? body.entries : [];
   var sheet = getSheet_();
   sheet.clearContents();
+
+  // Force the whole range to plain text BEFORE writing anything, otherwise
+  // Sheets auto-detects the "Tanggal" column as a date/time and silently
+  // rewrites it in its own format, which the app can no longer parse back
+  // into a datetime-local value.
+  sheet.getRange(1, 1, entries.length + 1, 4).setNumberFormat("@");
+
   sheet.getRange(1, 1, 1, 4).setValues([["ID", "Nama Momen", "Tanggal", "Diperbarui"]]);
 
   var now = new Date().toISOString();
