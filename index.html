@@ -139,12 +139,15 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: transform 100ms ease;
   }
 
   .icon-btn:hover {
     color: var(--accent-strong);
     border-color: var(--accent);
   }
+
+  .icon-btn:active { transform: scale(0.92); }
 
   h1 {
     font-family: "Fraunces", Georgia, serif;
@@ -200,6 +203,7 @@
     .entry-card { animation: none; }
     .stat-details summary .chev { transition: none; }
     .overlay-backdrop, .add-sheet { animation: none; }
+    .delete-btn, .icon-btn, .add-btn, .add-sheet-cancel, .add-sheet-save { transition: none; }
   }
 
   .live-clock-label {
@@ -285,18 +289,10 @@
   .entry-card.status-future { border-left-color: var(--status-future); }
   .entry-card.status-past { border-left-color: var(--status-past); }
 
-  .entry-top {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .entry-fields {
+  .entry-header {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    flex: 1 1 260px;
     min-width: 0;
   }
 
@@ -311,6 +307,9 @@
     border-bottom: 1px solid transparent;
     width: 100%;
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .label-input:hover { border-bottom-color: var(--border); }
@@ -324,6 +323,7 @@
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    justify-content: space-between;
   }
 
   .date-input {
@@ -372,6 +372,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: transform 100ms ease;
   }
 
   .delete-btn:hover {
@@ -379,6 +380,8 @@
     color: var(--danger);
     border-color: var(--danger);
   }
+
+  .delete-btn:active { transform: scale(0.92); }
 
   .delete-btn:focus-visible, .add-btn:focus-visible, .label-input:focus-visible, .date-input:focus-visible, .icon-btn:focus-visible, .stat-details summary:focus-visible {
     outline: 2px solid var(--accent);
@@ -568,7 +571,10 @@
     font-size: 0.95rem;
     cursor: pointer;
     border: 1px solid var(--border);
+    transition: transform 100ms ease;
   }
+
+  .add-sheet-cancel:active, .add-sheet-save:active { transform: scale(0.97); }
 
   .add-sheet-cancel {
     background: transparent;
@@ -658,11 +664,14 @@
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
+    transition: transform 100ms ease;
   }
 
   .add-btn:hover {
     background: var(--accent-soft);
   }
+
+  .add-btn:active { transform: scale(0.98); }
 
   footer.note {
     color: var(--text-muted);
@@ -672,9 +681,7 @@
 
   @media (max-width: 480px) {
     body { padding-inline: 16px; padding-block-end: 104px; }
-    .entry-card { padding: 16px; position: relative; }
-    .entry-top { padding-right: 64px; }
-    .delete-btn { position: absolute; top: 16px; right: 16px; }
+    .entry-card { padding: 16px; }
     .add-btn {
       position: fixed;
       left: 16px;
@@ -684,9 +691,7 @@
       box-shadow: 0 6px 20px rgba(20, 30, 35, 0.18), var(--shadow);
       z-index: 5;
     }
-    .date-row { flex-direction: column; align-items: stretch; gap: 8px; }
-    .date-input { flex: none; width: 100%; font-size: 0.95rem; padding: 9px 10px; }
-    .status-badge { align-self: flex-start; }
+    .date-input { flex: 1 1 100%; width: 100%; font-size: 0.95rem; padding: 9px 10px; }
     .live-clock-card { width: 100%; }
     #live-clock { font-size: 1.15rem; }
     .label-input { font-size: 1.15rem; }
@@ -1157,17 +1162,15 @@
   function cardTemplate(entry, isPast) {
     return (
       '<div class="entry-card ' + (isPast ? "status-past" : "status-future") + '" data-id="' + entry.id + '">' +
-        '<div class="entry-top">' +
-          '<div class="entry-fields">' +
-            '<input class="label-input" type="text" value="' + escapeHtml(entry.label) + '" placeholder="Nama momen (mis. Ulang tahun kamu)" aria-label="Nama momen">' +
-            '<div class="date-row">' +
-              '<input class="date-input" type="datetime-local" value="' + normalizeDateValue(entry.date) + '" aria-label="Tanggal acuan">' +
-              '<span class="status-badge" id="' + entry.id + '-badge"></span>' +
-            '</div>' +
+        '<div class="entry-header">' +
+          '<input class="label-input" type="text" value="' + escapeHtml(entry.label) + '" placeholder="Nama momen (mis. Ulang tahun kamu)" aria-label="Nama momen">' +
+          '<div class="date-row">' +
+            '<input class="date-input" type="datetime-local" value="' + normalizeDateValue(entry.date) + '" aria-label="Tanggal acuan">' +
+            '<span class="status-badge" id="' + entry.id + '-badge"></span>' +
+            '<button class="delete-btn" type="button" aria-label="Hapus momen">' +
+              '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON_TRASH + '</svg>' +
+            '</button>' +
           '</div>' +
-          '<button class="delete-btn" type="button" aria-label="Hapus momen">' +
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON_TRASH + '</svg>' +
-          '</button>' +
         '</div>' +
         '<div class="headline-stat" id="' + entry.id + '-headline">—</div>' +
         '<details class="stat-details">' +
