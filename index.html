@@ -826,6 +826,21 @@
       "T" + two(d.getHours()) + ":" + two(d.getMinutes());
   }
 
+  var VALID_DATETIME_LOCAL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+  function normalizeDateValue(raw) {
+    if (VALID_DATETIME_LOCAL.test(raw)) return raw;
+    var d = new Date(raw);
+    if (isNaN(d.getTime())) return raw;
+    return toLocalInputValue(d);
+  }
+
+  function normalizeEntries(arr) {
+    return (arr || []).map(function (en) {
+      return { id: en.id, label: en.label, date: normalizeDateValue(en.date) };
+    });
+  }
+
   function uid() {
     return "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   }
@@ -932,7 +947,7 @@
         if (snap.exists) {
           var data = snap.data();
           if (data && Array.isArray(data.entries) && data.entries.length) {
-            entries = data.entries;
+            entries = normalizeEntries(data.entries);
             saveLocal();
             renderList();
           }
@@ -946,7 +961,7 @@
         var data = snap.data();
         if (!data || !Array.isArray(data.entries)) return;
         if (JSON.stringify(data.entries) !== JSON.stringify(entries)) {
-          entries = data.entries;
+          entries = normalizeEntries(data.entries);
           saveLocal();
           renderList();
         }
@@ -1048,12 +1063,13 @@
           if (!silent) setSyncStatus("Token atau URL salah.");
           return;
         }
-        if (muchSmaller(data.entries.length, entries.length)) {
-          if (!silent) setSyncStatus("Sheets cuma punya " + data.entries.length + " momen, lokal punya " + entries.length + ". Nggak ditarik otomatis biar aman.");
+        var pulled = normalizeEntries(data.entries);
+        if (muchSmaller(pulled.length, entries.length)) {
+          if (!silent) setSyncStatus("Sheets cuma punya " + pulled.length + " momen, lokal punya " + entries.length + ". Nggak ditarik otomatis biar aman.");
           return;
         }
-        if (JSON.stringify(data.entries) !== JSON.stringify(entries)) {
-          entries = data.entries;
+        if (JSON.stringify(pulled) !== JSON.stringify(entries)) {
+          entries = pulled;
           saveLocal();
           renderList();
         }
@@ -1088,7 +1104,7 @@
           setSyncStatus("Token atau URL salah. Cek lagi ya.");
           return;
         }
-        var remoteEntries = Array.isArray(data.entries) ? data.entries : [];
+        var remoteEntries = normalizeEntries(Array.isArray(data.entries) ? data.entries : []);
         if (remoteEntries.length > 0 && muchSmaller(remoteEntries.length, entries.length)) {
           setSyncStatus("Sheets cuma punya " + remoteEntries.length + " momen, lokal punya " + entries.length + ". Belum digabung otomatis biar aman — tap 'Sinkron Sekarang' kalau memang mau timpa Sheets pakai data lokal.");
         } else if (remoteEntries.length) {
@@ -1145,7 +1161,7 @@
           '<div class="entry-fields">' +
             '<input class="label-input" type="text" value="' + escapeHtml(entry.label) + '" placeholder="Nama momen (mis. Ulang tahun kamu)" aria-label="Nama momen">' +
             '<div class="date-row">' +
-              '<input class="date-input" type="datetime-local" value="' + entry.date + '" aria-label="Tanggal acuan">' +
+              '<input class="date-input" type="datetime-local" value="' + normalizeDateValue(entry.date) + '" aria-label="Tanggal acuan">' +
               '<span class="status-badge" id="' + entry.id + '-badge"></span>' +
             '</div>' +
           '</div>' +
@@ -1495,7 +1511,8 @@
   bulkSaveBtn.addEventListener("click", doBulkImport);
 
   initTheme();
-  entries = loadEntries();
+  entries = normalizeEntries(loadEntries());
+  saveLocal();
   renderList();
   setInterval(tick, 1000);
   initDb();
